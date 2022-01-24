@@ -1,0 +1,6 @@
+{
+    "name": "notion-api-hack",
+    "description": "notion isn't ing all the types I need so I copied them here. cp node_modules/@notionhq/client/build/src/api-endpoints.d.ts @types/notion && sed -i -- 's/export//g' @types/notion/*",
+    "version": "1.0.0",
+    "typings": "api-endpoints.d.ts"
+}
