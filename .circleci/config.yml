@@ -2,7 +2,7 @@ version: 2
 jobs:
   release-docker:
     docker:
-      - image: benjamincaldwell/notion-highlight-sync
+      - image: benjamincaldwell/ci-scripts
 
     steps:
       - checkout
@@ -29,7 +29,8 @@ workflows:
   version: 2
   build_and_deploy:
     jobs:
-      - release-docker
+      - release-docker:
+          context: docker
       - deploy:
           requires:
             - release-docker
