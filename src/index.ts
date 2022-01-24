@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import { parseHighlightsFromKindleExport } from "./kindle"
-import { Notion } from "./notion"
+import fs from 'fs';
+import { parseHighlightsFromKindleExport } from "./kindle.js"
+import { Notion } from "./notion.js"
 
 function getFileFromArgs(args: string[]): string {
     let body = JSON.parse(args[0]);

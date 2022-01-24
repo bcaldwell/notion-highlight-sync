@@ -1,5 +1,6 @@
 import { Client } from '@notionhq/client';
 import { BookHighlights, Highlight } from './types';
+import got from 'got';
 
 const databaseID = "bf8ef5b54da648229f8597ef7e21572d"
 
@@ -61,7 +62,9 @@ export class Notion {
             return response.results[0].id
         }
 
-        const createResponse = await this.notion.pages.create({
+        const bookCoverURL = await getBookCoverURL(bookHighlights)
+
+        const pageCreateRequest: CreatePageBodyParameters = {
             parent: {
                 database_id: databaseID,
             },
@@ -94,7 +97,28 @@ export class Notion {
                 chapterNotes(),
                 spacerBlock(),
             ],
-        });
+        }
+
+        if (bookCoverURL !== null) {
+            pageCreateRequest.icon = {
+                type: "external",
+                external: {
+                    url: bookCoverURL
+                }
+            }
+
+            pageCreateRequest.properties.Cover = {
+                type: "files",
+                files: [
+                    {
+                        name: bookCoverURL,
+                        ...pageCreateRequest.icon
+                    }
+                ]
+            }
+        }
+
+        const createResponse = await this.notion.pages.create(pageCreateRequest);
 
         return createResponse.id;
     }
@@ -290,4 +314,64 @@ function highlightBlock(highlight: Highlight): BlockObjectRequest[] {
     blocks.push(spacerBlock())
 
     return blocks
+}
+
+// https://openlibrary.org/dev/docs/api/covers
+// https://covers.openlibrary.org/b/$key/$value-$size.jpg
+// https://covers.openlibrary.org/b/ISBN/9781617298318-L.jpg
+
+// https://openlibrary.org/search.json?title=five+lines+of+code
+
+async function getBookCoverURL(bookHighlights: BookHighlights): Promise<string | null> {
+    const isbn = await getBookISBN(bookHighlights)
+    if (isbn === null) {
+        return null
+    }
+
+    const coverImageURL = `https://covers.openlibrary.org/b/ISBN/${isbn}-L.jpg`
+
+    const response = await got(coverImageURL)
+    if (response.statusCode === 200) {
+        return coverImageURL
+    }
+
+    return null
+}
+
+async function getBookISBN(bookHighlights: BookHighlights): Promise<string | null> {
+    const bookTitlesToTry = [
+        bookHighlights.book,
+        // sometimes the book has a subtitle that breaks it
+        bookHighlights.book.split(":")[0]
+    ]
+
+    for (let title of bookTitlesToTry.filter(onlyUnique)) {
+        const encodedTitle = encodeURI(title)
+
+        const response: openLibrarySearchResponse = await got(`https://openlibrary.org/search.json?title=${encodedTitle}`, {
+            parseJson: text => JSON.parse(text)
+        }).json();
+
+        if (response.numFound > 0) {
+            for (let book of response.docs) {
+                if (book.author_name.indexOf(bookHighlights.author) !== -1) {
+                    return book.isbn[0]
+                }
+            }
+        }
+    }
+    return null
+}
+
+interface openLibrarySearchResponse {
+    numFound: Number;
+    docs: {
+        author_name: string[]
+        isbn: string[]
+    }[];
+}
+
+
+function onlyUnique<T>(value: T, index: Number, self: T[]) {
+    return self.indexOf(value) === index;
 }
