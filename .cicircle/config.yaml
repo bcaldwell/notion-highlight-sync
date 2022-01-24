@@ -35,5 +35,5 @@ workflows:
             - release-docker
           filters:
             branches:
-              only: master
+              only: main
           context: bot-github
